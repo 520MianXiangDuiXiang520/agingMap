@@ -1,4 +1,4 @@
-module agingMap
+module github.com/520MianXiangDuiXiang520/agingMap
 
 go 1.14
 
