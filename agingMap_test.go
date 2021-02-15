@@ -70,3 +70,12 @@ func TestAgingMap_Store(t *testing.T) {
 	})
 
 }
+
+func TestAgingMap_LoadWithDeadline(t *testing.T) {
+	am := NewAgingMap()
+	am.Store(1, 2, time.Minute)
+	for i := 0; i < 70; i++ {
+		fmt.Println(am.LoadWithDeadline(1))
+		time.Sleep(time.Second * 10)
+	}
+}
