@@ -47,6 +47,30 @@ func ExampleAgingMap_Load() {
 	}
 }
 
+func TestAgingMap(t *testing.T) {
+	aMap := NewWithLazyDelete()
+	aMap.Store("key", "val", time.Second)
+	time.Sleep(time.Second)
+	v, ok := aMap.Load("key")
+	if ok || v != nil {
+		t.Error("get expired data")
+	}
+}
+
+func TestAgingMap_AutoDelete(t *testing.T) {
+	aMap := NewBaseAgingMap(time.Second, 1)
+	for i := 0; i < 7; i++ {
+		aMap.Store(i, "val", time.Second)
+	}
+	time.Sleep(time.Second * 2)
+	for i := 0; i < 7; i++ {
+		v, ok := aMap._map.Load(i)
+		if ok || v != nil {
+			t.Error("get expired data")
+		}
+	}
+}
+
 func TestAgingMap_Store(t *testing.T) {
 	aMap := NewBaseAgingMap(time.Minute, 0.5)
 	go func() {

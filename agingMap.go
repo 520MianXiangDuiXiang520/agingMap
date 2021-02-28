@@ -57,7 +57,7 @@ func NewBaseAgingMap(spec time.Duration, deleteScale float64) *AgingMap {
 		task:        cron.New(),
 		deleteScale: deleteScale,
 	}
-	sec := fmt.Sprintf("*/%d * * * * ?", int(spec.Seconds()))
+	sec := fmt.Sprintf("@every %s", spec.String())
 	_ = am.task.AddFunc(sec, am.deleteExpiredItems)
 	am.task.Start()
 	return am
