@@ -8,6 +8,7 @@ package agingMap
 import (
 	"fmt"
 	"github.com/robfig/cron"
+	"sync"
 	"time"
 )
 
@@ -21,6 +22,7 @@ type AgingMap struct {
 	_map        Map
 	task        *cron.Cron
 	deleteScale float64
+	lock        sync.Mutex
 }
 
 func (am *AgingMap) deleteExpiredItems() {
@@ -131,4 +133,26 @@ func (am *AgingMap) Range(f func(k, v interface{}) bool) {
 		}
 		return f(key, value.(agingValue).v)
 	})
+}
+
+type TermFunc func(val interface{}, ok bool) bool
+
+// LoadOrStore key 存在直接返回，不存在存储 k, v
+func (am *AgingMap) LoadOrStore(key, value interface{}, age time.Duration) (v interface{}, deadline float64, stored bool) {
+	return am.TermLoadOrStore(key, value, age, func(val interface{}, ok bool) bool {
+		return !ok
+	})
+}
+
+// term 返回 true 则执行 Store,否则执行 Load
+func (am *AgingMap) TermLoadOrStore(key, value interface{}, age time.Duration,
+	term TermFunc) (v interface{}, deadline float64, stored bool) {
+	am.lock.Lock()
+	defer am.lock.Unlock()
+	v, dl, ok := am.LoadWithDeadline(key)
+	if term(v, ok) {
+		am.Store(key, value, age)
+		return value, age.Seconds(), true
+	}
+	return v, dl, false
 }

@@ -3,6 +3,7 @@ package agingMap
 import (
 	"fmt"
 	"math/rand"
+	"sync"
 	"testing"
 	"time"
 )
@@ -67,6 +68,51 @@ func TestAgingMap_AutoDelete(t *testing.T) {
 		v, ok := aMap._map.Load(i)
 		if ok || v != nil {
 			t.Error("get expired data")
+		}
+	}
+}
+
+func TestAgingMap_LoadOrStore(t *testing.T) {
+	aMap := NewBaseAgingMap(time.Second, 1)
+	_, _, stored := aMap.LoadOrStore("key", 1, time.Second)
+	if !stored {
+		t.Errorf("第一次未存储")
+	}
+	v, _, stored := aMap.LoadOrStore("key", 1, time.Second)
+	if v != 1 || stored {
+		t.Errorf("第二次存储")
+	}
+	time.Sleep(time.Second)
+	_, _, stored = aMap.LoadOrStore("key", 1, time.Second)
+	if !stored {
+		t.Errorf("第一次未存储")
+	}
+}
+
+func TestAgingMap_LoadOrStore_concurrent(t *testing.T) {
+	aMap := NewBaseAgingMap(time.Second, 1)
+	wg := sync.WaitGroup{}
+	for i := 0; i < 100; i++ {
+		var v1, v2 interface{}
+		var s1, s2 bool
+		wg.Add(2)
+		go func(i int) {
+			defer wg.Done()
+			v1, _, s1 = aMap.LoadOrStore(i, fmt.Sprintf("F%d", i), time.Second)
+		}(i)
+		go func(i int) {
+			defer wg.Done()
+			v2, _, s2 = aMap.LoadOrStore(i, fmt.Sprintf("S%d", i), time.Second)
+		}(i)
+		wg.Wait()
+		if v1 != v2 {
+			t.Errorf("两次值一样， V1 = %v, V2 = %v", v1, v2)
+		}
+		if s1 && s2 {
+			t.Errorf("true true")
+		}
+		if !(s1 || s2) {
+			t.Errorf("false false")
 		}
 	}
 }
